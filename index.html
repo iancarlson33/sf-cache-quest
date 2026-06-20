@@ -771,7 +771,7 @@ async function loadComments(cacheId) {
     }).join('');
   } catch (e) {
     console.error('loadComments failed', e);
-    el.innerHTML = '<div class="comments-empty">Couldn\\'t load comments — check connection.</div>';
+    el.innerHTML = '<div class="comments-empty">Could not load comments — check connection.</div>';
   }
 }
 
