@@ -404,12 +404,17 @@
 <div class="overlay" id="addOverlay">
   <div class="modal">
     <h3 id="modalTitle">Add a Cache</h3>
+    <p style="font-size:11.5px;opacity:0.65;margin:-4px 0 10px;">This gets shared with everyone using the app!</p>
+    <label>Your name</label>
+    <input id="f_addedby" placeholder="Who's adding this?">
     <label>Name</label>
     <input id="f_name" placeholder="e.g. Eagle Trail 2 — A Scout is Loyal">
     <label>Area / Route</label>
     <select id="f_area">
       <option>Waterfront</option>
       <option>Glen Park</option>
+      <option>Golden Gate Park</option>
+      <option>Richmond District</option>
       <option>Lands End</option>
       <option>Presidio</option>
       <option>Other / Custom</option>
@@ -424,7 +429,7 @@
     <textarea id="f_hint" placeholder="What to look for, theme, etc."></textarea>
     <div class="modal-actions">
       <button class="btn gc" onclick="closeAddModal()">Cancel</button>
-      <button class="btn directions" onclick="saveNewCache()">Save Cache</button>
+      <button class="btn directions" id="saveCacheBtn" onclick="saveNewCache()">Save Cache</button>
     </div>
   </div>
 </div>
@@ -544,6 +549,39 @@ async function loadData() {
     try { persist(); } catch(e2) { console.error('init save failed', e2); }
   }
   render();
+  loadCommunityCaches();
+}
+
+function getHiddenIds() {
+  try { return JSON.parse(localStorage.getItem('sf-cache-quest:hidden') || '[]'); } catch (e) { return []; }
+}
+function hideLocally(id) {
+  const hidden = getHiddenIds();
+  if (!hidden.includes(id)) hidden.push(id);
+  try { localStorage.setItem('sf-cache-quest:hidden', JSON.stringify(hidden)); } catch (e) {}
+}
+
+async function loadCommunityCaches() {
+  if (typeof window.fsGetCaches !== 'function') return;
+  try {
+    const shared = await window.fsGetCaches();
+    const hidden = new Set(getHiddenIds());
+    const existingIds = new Set(state.caches.map(c => c.id));
+    let added = false;
+    shared.forEach(sc => {
+      if (hidden.has(sc.id) || existingIds.has(sc.id)) return;
+      state.caches.push({
+        id: sc.id, name: sc.name, area: sc.area || 'Other / Custom',
+        lat: sc.lat, lng: sc.lng, gc: sc.gc || '', exact: true,
+        hint: sc.hint || '', addedBy: sc.addedBy || ''
+      });
+      existingIds.add(sc.id);
+      added = true;
+    });
+    if (added) { persist(); render(); }
+  } catch (e) {
+    console.error('loadCommunityCaches failed', e);
+  }
 }
 
 function persist() {
@@ -658,7 +696,7 @@ function renderList() {
         <div class="stamp-circle ${found ? 'found' : ''}">${found ? '✓' : '?'}</div>
         <div class="cache-info">
           <div class="cache-name">${c.name}</div>
-          <div class="cache-meta">${c.area}${c.gc ? ' · '+c.gc : ''}${c.dt ? ' · '+c.dt : ''}</div>
+          <div class="cache-meta">${c.area}${c.gc ? ' · '+c.gc : ''}${c.dt ? ' · '+c.dt : ''}${c.addedBy ? ' · added by '+c.addedBy : ''}</div>
         </div>
         <div class="chevron">⌄</div>
       </div>
@@ -712,7 +750,12 @@ function renderList() {
     el.addEventListener('click', (e) => {
       e.stopPropagation();
       const id = el.getAttribute('data-del');
-      if (confirm('Remove this cache from your list?')) {
+      const isShared = id.startsWith('community-');
+      const msg = isShared
+        ? 'Hide this community cache on your device? (It stays visible for everyone else.)'
+        : 'Remove this cache from your list?';
+      if (confirm(msg)) {
+        if (isShared) hideLocally(id);
         state.caches = state.caches.filter(c => c.id !== id);
         delete state.found[id];
         persist(); render();
@@ -896,6 +939,7 @@ async function confirmFound() {
 }
 
 function openAddModal() {
+  document.getElementById('f_addedby').value = getSavedName() || '';
   document.getElementById('f_name').value = '';
   document.getElementById('f_area').value = 'Other / Custom';
   document.getElementById('f_lat').value = '';
@@ -910,23 +954,42 @@ async function saveNewCache() {
   const name = document.getElementById('f_name').value.trim();
   const lat = parseFloat(document.getElementById('f_lat').value);
   const lng = parseFloat(document.getElementById('f_lng').value);
+  const addedBy = (document.getElementById('f_addedby').value || '').trim() || 'Anonymous Explorer';
   if (!name || isNaN(lat) || isNaN(lng)) {
     alert('Please add at least a name, latitude, and longitude.');
     return;
   }
-  const newCache = {
-    id: 'custom-' + Date.now(),
-    name,
-    area: document.getElementById('f_area').value,
-    lat, lng,
-    gc: document.getElementById('f_gc').value.trim(),
-    exact: true,
-    hint: document.getElementById('f_hint').value.trim()
-  };
-  state.caches.push(newCache);
-  await persist();
-  closeAddModal();
-  render();
+  const area = document.getElementById('f_area').value;
+  const gc = document.getElementById('f_gc').value.trim();
+  const hint = document.getElementById('f_hint').value.trim();
+  const btn = document.getElementById('saveCacheBtn');
+
+  saveName(addedBy);
+
+  if (typeof window.fsAddCache === 'function') {
+    if (btn) { btn.disabled = true; btn.textContent = 'Sharing…'; }
+    try {
+      const newId = await window.fsAddCache({ name, area, lat, lng, gc, hint, addedBy });
+      state.caches.push({ id: newId, name, area, lat, lng, gc, exact: true, hint, addedBy });
+      await persist();
+      closeAddModal();
+      render();
+    } catch (e) {
+      console.error('saveNewCache (Firestore) failed', e);
+      alert("Couldn't share this cache online — check your connection. Saving it on this device only for now.");
+      state.caches.push({ id: 'custom-' + Date.now(), name, area, lat, lng, gc, exact: true, hint, addedBy });
+      await persist();
+      closeAddModal();
+      render();
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Save Cache'; }
+    }
+  } else {
+    state.caches.push({ id: 'custom-' + Date.now(), name, area, lat, lng, gc, exact: true, hint, addedBy });
+    await persist();
+    closeAddModal();
+    render();
+  }
 }
 
 async function resetProgress() {
@@ -977,6 +1040,25 @@ loadData();
     );
     const snap = await getDocs(q);
     return snap.docs.map(d => d.data());
+  };
+
+  window.fsAddCache = async function ({ name, area, lat, lng, gc, hint, addedBy }) {
+    const docRef = await addDoc(collection(db, 'community_caches'), {
+      name: String(name).slice(0, 120),
+      area: String(area || 'Other / Custom').slice(0, 60),
+      lat: Number(lat),
+      lng: Number(lng),
+      gc: String(gc || '').slice(0, 30),
+      hint: String(hint || '').slice(0, 500),
+      addedBy: String(addedBy || 'Anonymous Explorer').slice(0, 60),
+      createdAt: serverTimestamp()
+    });
+    return 'community-' + docRef.id;
+  };
+
+  window.fsGetCaches = async function () {
+    const snap = await getDocs(collection(db, 'community_caches'));
+    return snap.docs.map(d => ({ id: 'community-' + d.id, ...d.data() }));
   };
 </script>
 </body>
