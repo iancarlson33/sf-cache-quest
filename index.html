@@ -203,6 +203,15 @@
   .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
   .modal-actions .btn { padding: 10px; }
 
+  .maps-parse-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0 10px; }
+  .maps-parse-status { font-size: 11px; font-weight: 700; flex: 1; }
+  .maps-parse-status.ok { color: var(--forest); }
+  .maps-parse-status.bad { color: var(--blaze); }
+  .loc-mini-btn {
+    flex: 0 0 auto; background: var(--card); border: 1.5px solid var(--forest); color: var(--forest);
+    border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer;
+  }
+
   footer { text-align: center; font-size: 10.5px; opacity: 0.55; line-height: 1.6; margin-top: 18px; padding: 0 6px; }
   footer button { background:none; border:none; color: var(--forest); font-size: 10.5px; text-decoration: underline; cursor: pointer; padding:0; }
 
@@ -419,6 +428,12 @@
       <option>Presidio</option>
       <option>Other / Custom</option>
     </select>
+    <label>Paste a Google Maps link</label>
+    <input id="f_mapslink" placeholder="https://maps.google.com/...or just 'lat, lng'" oninput="tryParseMapsLink()">
+    <div class="maps-parse-row">
+      <span id="mapsParseStatus" class="maps-parse-status"></span>
+      <button type="button" class="loc-mini-btn" onclick="useMyLocationForForm()">📍 Use my location</button>
+    </div>
     <div class="row2">
       <div><label>Latitude</label><input id="f_lat" placeholder="37.7955" inputmode="decimal"></div>
       <div><label>Longitude</label><input id="f_lng" placeholder="-122.3937" inputmode="decimal"></div>
@@ -942,13 +957,85 @@ function openAddModal() {
   document.getElementById('f_addedby').value = getSavedName() || '';
   document.getElementById('f_name').value = '';
   document.getElementById('f_area').value = 'Other / Custom';
+  document.getElementById('f_mapslink').value = '';
   document.getElementById('f_lat').value = '';
   document.getElementById('f_lng').value = '';
   document.getElementById('f_gc').value = '';
   document.getElementById('f_hint').value = '';
+  document.getElementById('mapsParseStatus').textContent = '';
+  document.getElementById('mapsParseStatus').className = 'maps-parse-status';
   document.getElementById('addOverlay').classList.add('show');
 }
 function closeAddModal() { document.getElementById('addOverlay').classList.remove('show'); }
+
+function extractLatLngFromText(text) {
+  if (!text) return null;
+  const patterns = [
+    /!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)/,   // Google "place" link embedded precise coords
+    /@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/,        // .../@lat,lng,zoom
+    /[?&]q=(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/, // ?q=lat,lng
+    /(-?\d{1,3}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/    // plain "lat, lng" text
+  ];
+  for (const re of patterns) {
+    const m = text.match(re);
+    if (m) {
+      const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+      if (!isNaN(lat) && !isNaN(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+        return { lat, lng };
+      }
+    }
+  }
+  return null;
+}
+
+function tryParseMapsLink() {
+  const text = document.getElementById('f_mapslink').value.trim();
+  const status = document.getElementById('mapsParseStatus');
+  if (!text) { status.textContent = ''; status.className = 'maps-parse-status'; return; }
+
+  if (/(maps\.app\.goo\.gl|goo\.gl\/maps)/.test(text) && !extractLatLngFromText(text)) {
+    status.textContent = "Shortened links don't include coordinates — open it once in your browser, then paste the full address bar URL.";
+    status.className = 'maps-parse-status bad';
+    return;
+  }
+
+  const result = extractLatLngFromText(text);
+  if (result) {
+    document.getElementById('f_lat').value = result.lat.toFixed(6);
+    document.getElementById('f_lng').value = result.lng.toFixed(6);
+    status.textContent = `✓ Got it: ${result.lat.toFixed(5)}, ${result.lng.toFixed(5)}`;
+    status.className = 'maps-parse-status ok';
+  } else {
+    status.textContent = "Couldn't find coordinates in that — try the full link or paste 'lat, lng' directly.";
+    status.className = 'maps-parse-status bad';
+  }
+}
+
+function useMyLocationForForm() {
+  const status = document.getElementById('mapsParseStatus');
+  if (!navigator.geolocation) {
+    status.textContent = "Location isn't available in this browser.";
+    status.className = 'maps-parse-status bad';
+    return;
+  }
+  status.textContent = 'Getting your location…';
+  status.className = 'maps-parse-status';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const lat = pos.coords.latitude, lng = pos.coords.longitude;
+      document.getElementById('f_lat').value = lat.toFixed(6);
+      document.getElementById('f_lng').value = lng.toFixed(6);
+      document.getElementById('f_mapslink').value = '';
+      status.textContent = `✓ Using your current location: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      status.className = 'maps-parse-status ok';
+    },
+    err => {
+      status.textContent = "Couldn't get your location — enter it manually instead.";
+      status.className = 'maps-parse-status bad';
+    },
+    { timeout: 8000 }
+  );
+}
 
 async function saveNewCache() {
   const name = document.getElementById('f_name').value.trim();
