@@ -449,7 +449,7 @@
       <a class="donate-btn" href="https://venmo.com/u/kim-carlson87" target="_blank" rel="noopener">
         <span class="donate-coin">🪙</span> Support Ward &amp; Hyde's Next Adventure
       </a>
-      <div class="landing-footnote">Golden Gate Park · Richmond District · Lands End · Presidio · Glen Park · Waterfront</div>
+      <div class="landing-footnote">Golden Gate Park · Richmond District · Lands End · Presidio · Glen Park · Waterfront · Marina</div>
     </div>
   </div>
 
@@ -548,7 +548,7 @@
     <h2 class="map-title">ℹ️ About</h2>
   </div>
   <div class="about-content">
-    <p>SF Cache Quest is a little field-journal-style app built for a family geocaching adventure around San Francisco — Golden Gate Park, the Presidio, Lands End, Glen Park, the Waterfront, and the Richmond District.</p>
+    <p>SF Cache Quest is a little field-journal-style app built for a family geocaching adventure around San Francisco — Golden Gate Park, the Presidio, Lands End, Glen Park, the Waterfront, the Marina, and the Richmond District.</p>
     <p>Real cache coordinates came from public Geocaching.com listings and GPX exports. The community log, shared caches, and reports are visible to everyone using this link — so be kind, and have fun out there!</p>
     <p>Built with ❤️ for Ward &amp; Hyde's next adventure.</p>
   </div>
@@ -588,6 +588,7 @@
       <option>Richmond District</option>
       <option>Lands End</option>
       <option>Presidio</option>
+      <option>Marina</option>
       <option>Other / Custom</option>
     </select>
     <label>Paste a Google Maps link</label>
@@ -706,6 +707,20 @@ const BUILTIN_CACHES = [
     hint:'A magnetic hide — the hint word is "magnetic" spelled backwards.' },
   { id:'GC8E4N2', name:'Hand Jive', area:'Golden Gate Park', lat:37.76885, lng:-122.465017, gc:'GC8E4N2', exact:true, dt:'D1.5 / T1.5', container:'Small',
     hint:"You can't just sit on your hands for this one." },
+
+  // --- Batch 3: the Marina district (June 2026) ---
+  { id:'GCEC8', name:'Green Thumb', area:'Marina', lat:37.806094, lng:-122.428807, gc:'GCEC8', exact:true, dt:'D2 / T1', container:'Large',
+    hint:'Plot #6 in the community garden — look for the lemon tree, SW corner of the plot.' },
+  { id:'GCAYRWV', name:'Marina Green', area:'Marina', lat:37.807309, lng:-122.437553, gc:'GCAYRWV', exact:true, dt:'D1.5 / T1.5', container:'Small',
+    hint:'On a bench — not magnetic. Please make sure the grass covers it back up.' },
+  { id:'GCB64K4', name:'Feel The Breeze Of The Ocean', area:'Marina', lat:37.806833, lng:-122.4424, gc:'GCB64K4', exact:true, dt:'D3 / T2', container:'Micro',
+    hint:"You guys will ROCK this!" },
+  { id:'GCBG3JJ', name:'The Swan Egg', area:'Marina', lat:37.80405, lng:-122.44723, gc:'GCBG3JJ', exact:true, dt:'D2 / T2.5', container:'Other',
+    hint:'A tool is needed (and provided) — you\'ll have to "fish" for the swan egg.' },
+  { id:'GCB70V8', name:'Next Stop: Geocache!', area:'Marina', lat:37.80052, lng:-122.4392, gc:'GCB70V8', exact:true, dt:'D3 / T1', container:'Micro',
+    hint:'Low.' },
+  { id:'GCB644H', name:'Wavy Tree', area:'Marina', lat:37.8012, lng:-122.44122, gc:'GCB644H', exact:true, dt:'D1.5 / T1.5', container:'Micro',
+    hint:"Hmm, that's a weird tree." },
 ];
 
 const RANKS = [
@@ -858,7 +873,8 @@ const AREA_ICON_SVG = {
   'Golden Gate Park': '<svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="6" fill="#2B4233"/><rect x="10.5" y="14" width="3" height="7" fill="#8B5A2B"/></svg>',
   'Lands End': '<svg viewBox="0 0 24 24"><path d="M2 16 L8 6 L11 12 L14 8 L18 16 Z" fill="#2B4233"/><path d="M2 19 Q6 17 10 19 Q14 21 18 19 Q20 18 22 19" stroke="#5E7C82" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
   'Glen Park': '<svg viewBox="0 0 24 24"><path d="M2 18 Q8 8 12 18 Q16 10 22 18 Z" fill="#8FA38B"/><circle cx="12" cy="8" r="3" fill="#2B4233"/><rect x="11" y="11" width="2" height="5" fill="#8B5A2B"/></svg>',
-  'Waterfront': '<svg viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="2" stroke="#2B4233" stroke-width="1.5" fill="none"/><line x1="12" y1="6" x2="12" y2="18" stroke="#2B4233" stroke-width="2"/><path d="M5 13 Q12 20 19 13" stroke="#2B4233" stroke-width="2" fill="none"/><line x1="7" y1="9" x2="17" y2="9" stroke="#2B4233" stroke-width="2"/></svg>'
+  'Waterfront': '<svg viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="2" stroke="#2B4233" stroke-width="1.5" fill="none"/><line x1="12" y1="6" x2="12" y2="18" stroke="#2B4233" stroke-width="2"/><path d="M5 13 Q12 20 19 13" stroke="#2B4233" stroke-width="2" fill="none"/><line x1="7" y1="9" x2="17" y2="9" stroke="#2B4233" stroke-width="2"/></svg>',
+  'Marina': '<svg viewBox="0 0 24 24"><path d="M12 3 L12 14" stroke="#2B4233" stroke-width="1.5"/><path d="M12 4 L18 11 L12 11 Z" fill="#C8552C"/><path d="M5 17 L19 17 L16 21 L8 21 Z" fill="#5E7C82"/></svg>'
 };
 const AREA_ICON_DEFAULT = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="#2B4233" stroke-width="1.5" fill="none"/><path d="M12 12 L15 8 L13 12 Z" fill="#C8552C"/><path d="M12 12 L9 16 L11 12 Z" fill="#8FA38B"/></svg>';
 function getAreaIconSvg(area) {
@@ -1195,7 +1211,8 @@ const MAP_PIN_POSITIONS = {
   'Golden Gate Park':    { left: 21.5, top: 57.4 },
   'Lands End':           { left: 13.2, top: 32.6 },
   'Glen Park':           { left: 52.8, top: 85.3 },
-  'Waterfront':          { left: 71.5, top: 16.9 }
+  'Waterfront':          { left: 71.5, top: 16.9 },
+  'Marina':              { left: 51.4, top: 10.5 }
 };
 let customPinSlot = 0;
 function getPinPosition(area) {
